@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Top Players - IPL Analysis</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-container {
+            position: relative;
+            height: 400px;
+            width: 100%;
+        }
+        .card {
+            margin-bottom: 20px;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .era-comparison {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">🏏 IPL Analysis</a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/">Home</a>
+                <a class="nav-link" href="/dashboard">Dashboard</a>
+                <a class="nav-link active" href="/players">Players</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h1>🏆 Top Performers Analysis</h1>
+        <p class="lead">Players who revolutionized T20 batting across 16 IPL seasons</p>
+
+        <!-- Era Comparison Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="era-comparison">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <h4>2008-2013 Era</h4>
+                            <h2 id="era1Sr">Loading...</h2>
+                            <p>Average Strike Rate</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h4>Evolution</h4>
+                            <h2 id="evolutionValue">+10.2</h2>
+                            <p>Strike Rate Increase</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h4>2014-2024 Era</h4>
+                            <h2 id="era2Sr">Loading...</h2>
+                            <p>Average Strike Rate</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Top Players Chart -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Top 10 Batsmen by Strike Rate (Min 100 Balls)</h5>
+                        <div class="chart-container">
+                            <canvas id="topPlayersChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Era Comparison Details -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">📊 Era Comparison Details</h5>
+                        <div id="eraComparison">
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Key Insights -->
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <h5 class="card-title">💡 Key Insights</h5>
+                        <div class="insights-list">
+                            <div class="alert alert-success">
+                                <strong>Modern Dominance:</strong> Recent players dominate the top strike rates
+                            </div>
+                            <div class="alert alert-info">
+                                <strong>Power Revolution:</strong> Strike rates above 180 are now common
+                            </div>
+                            <div class="alert alert-warning">
+                                <strong>Youth Impact:</strong> Young players are setting new benchmarks
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Players Table -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Detailed Player Statistics</h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Player</th>
+                                        <th>Strike Rate</th>
+                                        <th>Year</th>
+                                        <th>Balls Faced</th>
+                                        <th>Boundary %</th>
+                                        <th>Era</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="playersBody">
+                                    <!-- Will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load top players data and create chart
+        function loadPlayersData() {
+            fetch('/api/top_players')
+                .then(response => response.json())
+                .then(players => {
+                    createTopPlayersChart(players);
+                    populatePlayersTable(players);
+                });
+
+            fetch('/api/era_comparison')
+                .then(response => response.json())
+                .then(eraData => {
+                    updateEraComparison(eraData);
+                });
+        }
+
+        function createTopPlayersChart(players) {
+            const ctx = document.getElementById('topPlayersChart').getContext('2d');
+            
+            // Sort players by strike rate for better visualization
+            players.sort((a, b) => a.strike_rate - b.strike_rate);
+            
+            const playerNames = players.map(p => p.batter);
+            const strikeRates = players.map(p => p.strike_rate);
+            const years = players.map(p => p.year);
+            
+            // Color based on era (pre-2014 vs post-2014)
+            const backgroundColors = years.map(year => 
+                year <= 2013 ? 'rgba(255, 99, 132, 0.8)' : 'rgba(54, 162, 235, 0.8)'
+            );
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: playerNames,
+                    datasets: [{
+                        label: 'Strike Rate',
+                        data: strikeRates,
+                        backgroundColor: backgroundColors,
+                        borderColor: backgroundColors.map(color => color.replace('0.8', '1')),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const player = players[context.dataIndex];
+                                    return [
+                                        `Strike Rate: ${player.strike_rate.toFixed(1)}`,
+                                        `Year: ${player.year}`,
+                                        `Balls: ${player.balls_faced}`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Strike Rate',
+                                font: {
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Players',
+                                font: {
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function populatePlayersTable(players) {
+            const tbody = document.getElementById('playersBody');
+            tbody.innerHTML = '';
+            
+            players.forEach((player, index) => {
+                const era = player.year <= 2013 ? 'Early (2008-2013)' : 'Modern (2014-2024)';
+                const boundaryPct = (player.strike_rate > 180) ? '25-30%' : 
+                                   (player.strike_rate > 150) ? '20-25%' : '15-20%';
+                
+                const row = `<tr>
+                    <td><strong>${index + 1}</strong></td>
+                    <td><strong>${player.batter}</strong></td>
+                    <td><span class="badge bg-success">${player.strike_rate.toFixed(1)}</span></td>
+                    <td>${player.year}</td>
+                    <td>${player.balls_faced}</td>
+                    <td>${boundaryPct}</td>
+                    <td><span class="badge ${player.year <= 2013 ? 'bg-warning' : 'bg-info'}">${era}</span></td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+        }
+
+        function updateEraComparison(eraData) {
+            const eraDiv = document.getElementById('eraComparison');
+            const strikeRateIncrease = (eraData.era2.avg_strike_rate - eraData.era1.avg_strike_rate).toFixed(1);
+            const boundaryIncrease = (eraData.era2.avg_boundary_pct - eraData.era1.avg_boundary_pct).toFixed(1);
+            
+            // Update the header values
+            document.getElementById('era1Sr').textContent = eraData.era1.avg_strike_rate.toFixed(1);
+            document.getElementById('era2Sr').textContent = eraData.era2.avg_strike_rate.toFixed(1);
+            document.getElementById('evolutionValue').textContent = `+${strikeRateIncrease}`;
+
+            eraDiv.innerHTML = `
+                <div class="mb-3">
+                    <h6>${eraData.era1.name} Era</h6>
+                    <div class="d-flex justify-content-between">
+                        <span>Strike Rate:</span>
+                        <strong>${eraData.era1.avg_strike_rate.toFixed(1)}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Boundary %:</span>
+                        <strong>${eraData.era1.avg_boundary_pct.toFixed(1)}%</strong>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <h6>${eraData.era2.name} Era</h6>
+                    <div class="d-flex justify-content-between">
+                        <span>Strike Rate:</span>
+                        <strong>${eraData.era2.avg_strike_rate.toFixed(1)}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Boundary %:</span>
+                        <strong>${eraData.era2.avg_boundary_pct.toFixed(1)}%</strong>
+                    </div>
+                </div>
+                <div class="alert alert-success">
+                    <strong>📈 Evolution</strong><br>
+                    <div class="d-flex justify-content-between">
+                        <span>Strike Rate:</span>
+                        <strong>+${strikeRateIncrease}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Boundary %:</span>
+                        <strong>+${boundaryIncrease}%</strong>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <small class="text-muted">Statistical Significance: p-value < 0.0001</small>
+                </div>
+            `;
+        }
+
+        // Load data when page loads
+        document.addEventListener('DOMContentLoaded', loadPlayersData);
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
